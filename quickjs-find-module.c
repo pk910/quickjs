@@ -27,7 +27,7 @@ js_find_module_ext(JSContext* ctx, const char* module_name, const char* ext) {
 
     n = q - p;
 
-    filename = js_malloc(ctx, n + 1 + strlen(module_name) + 3 + 1);
+    filename = js_malloc(ctx, n + 1 + strlen(module_name) + 4 + 1);
 
     strncpy(filename, p, n);
     filename[n] = '/';
@@ -35,8 +35,15 @@ js_find_module_ext(JSContext* ctx, const char* module_name, const char* ext) {
 
     m = strlen(module_name);
 
-    if(!(m >= 3 && !strcmp(&module_name[m - 3], ext)))
+    if(!(m >= 3 && !strcmp(&module_name[m - 3], ext))) {
       strcpy(&filename[n + 1 + m], ext);
+      m += 3;
+    }
+
+    #if defined(_WIN32) || defined(__dietlibc__)
+    if(!strcmp(ext, ".so"))
+      strcpy(&filename[n + 1 + m - 2], "dll");
+    #endif
 
     if(!stat(filename, &st))
       return filename;

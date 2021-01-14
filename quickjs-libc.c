@@ -458,8 +458,49 @@ typedef JSModuleDef *(JSInitModuleFunc)(JSContext *ctx,
 static JSModuleDef *js_module_loader_so(JSContext *ctx,
                                         const char *module_name)
 {
-    JS_ThrowReferenceError(ctx, "shared library modules are not supported yet");
-    return NULL;
+    JSModuleDef *m;
+    HMODULE hd;
+    JSInitModuleFunc *init;
+    char *filename, *pathslash;
+    
+    /* must replace all '/' by '\' */
+    filename = js_malloc(ctx, strlen(module_name) + 1);
+    if (!filename)
+        return NULL;
+    strcpy(filename, module_name + 2);
+
+    pathslash = filename;
+    while((pathslash = strchr(pathslash, '/')) != NULL) {
+        *pathslash++ = '\\';
+    }
+
+    /* C module */
+    hd = LoadLibrary(filename);
+    js_free(ctx, filename);
+    
+    if (!hd) {
+        JS_ThrowReferenceError(ctx, "could not load module filename '%s' as shared library: %d",
+                               filename, GetLastError());
+        goto fail;
+    }
+
+    init = (JSInitModuleFunc *)GetProcAddress(hd, "js_init_module");
+    if (!init) {
+        JS_ThrowReferenceError(ctx, "could not load module filename '%s': js_init_module not found",
+                               filename);
+        goto fail;
+    }
+
+    m = init(ctx, module_name);
+    if (!m) {
+        JS_ThrowReferenceError(ctx, "could not load module filename '%s': initialization error",
+                               filename);
+    fail:
+        if (hd)
+            FreeLibrary(hd);
+        return NULL;
+    }
+    return m;
 }
 #else
 static JSModuleDef *js_module_loader_so(JSContext *ctx,
@@ -570,7 +611,7 @@ JSModuleDef *js_module_loader(JSContext *ctx,
 {
     JSModuleDef *m;
 
-    if (has_suffix(module_name, ".so")) {
+    if (has_suffix(module_name, ".so") || has_suffix(module_name, ".dll")) {
         m = js_module_loader_so(ctx, module_name);
     } else {
         size_t buf_len;
