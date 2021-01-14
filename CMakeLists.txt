@@ -298,6 +298,10 @@ install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink qjs ${C
 
 add_custom_target(.ctags COMMAND ctags -R ${CMAKE_CURRENT_SOURCE_DIR})
 
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/crypto/CMakeLists.txt)
+  add_subdirectory(crypto)
+endif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/crypto/CMakeLists.txt)
+
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/net/CMakeLists.txt)
   add_subdirectory(net)
 endif(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/net/CMakeLists.txt)
